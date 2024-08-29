@@ -2,6 +2,10 @@ unit ULID;
 
 interface
 
+uses
+  DateUtils,
+  SysUtils;
+
 {
   ULID: Universally Unique Lexicographically Sortable Identifier
 
@@ -11,44 +15,61 @@ interface
 
   For more information see: https://github.com/martinusso/ulid/blob/master/README.md
 }
-function CreateULID: string;
 
-function EncodeTime(Time: Int64): string;
+type TULID = class
+  strict private
+    const
+      ENCODED_RANDOM_LENGTH = 16;
+      ENCODED_TIME_LENGTH = 10;
+      ENCODING: array[0..31] of string = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                                          'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+                                          'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X',
+                                          'Y', 'Z'); // Crockford's Base32
+  private
+    var
+      FLastTime: Int64;
+  protected
+    function EncodeRandom: string;
+    function InternalCreateULID: string;
+    function InternalEncodeTime(Time: Int64): string;
+    function UNIXTimeInMilliseconds: Int64;
+  public
+    class function NewULID: string;
+    class function EncodeTime(Time: Int64): string;
+end;
+
 
 implementation
 
-uses
-  DateUtils,
-  SysUtils,
-  Windows;
+var
+  FULID: TULID;
 
-const
-  ENCODING: array[0..31] of string = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                                      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
-                                      'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X',
-                                      'Y', 'Z'); // Crockford's Base32
-  ENCODING_LENGTH = Length(ENCODING);
+class function TULID.NewULID: string;
+begin
+  Result := FULID.InternalCreateULID;
+end;
 
-function CreateULID: string;
+class function TULID.EncodeTime(Time: Int64): string;
+begin
+  Result := FULID.InternalEncodeTime(Time);
+end;
 
-  function UNIXTimeInMilliseconds: Int64;
-  var
-    ST: SystemTime;
-    DT: TDateTime;
+function TULID.UNIXTimeInMilliseconds: Int64;
+begin
+  Result := DateUtils.MilliSecondsBetween(Now, UnixDateDelta);
+  if (FULID.FLastTime > 0) and (Result = FLastTime) then
   begin
-    GetSystemTime(ST);
-    DT := EncodeDate(ST.wYear, ST.wMonth, ST.wDay) +
-          SysUtils.EncodeTime(ST.wHour, ST.wMinute, ST.wSecond, ST.wMilliseconds);
-    Result := DateUtils.MilliSecondsBetween(DT, UnixDateDelta);
+    Inc(RandSeed);
   end;
+  FLastTime := Result;
+end;
 
+function TULID.InternalCreateULID: string;
 begin
   Result := EncodeTime(UNIXTimeInMilliseconds) + EncodeRandom;
 end;
 
-function EncodeRandom: string;
-const
-  ENCODED_RANDOM_LENGTH = 16;
+function TULID.EncodeRandom: string;
 var
   I: Word;
   Rand: Integer;
@@ -56,14 +77,12 @@ begin
   Result := '';
   for I := ENCODED_RANDOM_LENGTH downto 1 do
   begin
-    Rand := Trunc(ENCODING_LENGTH * Random);
+    Rand := Trunc(Length(TULID.ENCODING) * Random);
     Result := ENCODING[Rand] + Result;
   end;
 end;
 
-function EncodeTime(Time: Int64): string;
-const
-  ENCODED_TIME_LENGTH = 10;
+function TULID.InternalEncodeTime(Time: Int64): string;
 var
   I: Word;
   M: Integer;
@@ -71,10 +90,18 @@ begin
   Result := '';
   for I := ENCODED_TIME_LENGTH downto 1 do
   begin
-    M := (Time mod ENCODING_LENGTH);
+    M := (Time mod Length(TULID.ENCODING));
     Result := ENCODING[M] + Result;
-    Time := Trunc((Time - M) / ENCODING_LENGTH);
+    Time := Trunc((Time - M) / Length(TULID.ENCODING));
   end;
 end;
+
+initialization
+  FULID := TULID.Create;
+  FULID.FLastTime := 0;
+  Randomize();
+
+finalization
+  FreeAndNil(FULID);
 
 end.
