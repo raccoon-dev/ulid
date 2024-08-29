@@ -22,7 +22,7 @@ For more information, check out [ULID's README](https://github.com/alizain/ulid/
 `uses ULID`
 
 ```Delphi
-CreateULID; // 01ARZ3NDEKTSV4RRFFQ69G5FAV
+var newUlid := TULID.NewULID; // 01ARZ3NDEKTSV4RRFFQ69G5FAV
 ```
 ## How to contribute
 
