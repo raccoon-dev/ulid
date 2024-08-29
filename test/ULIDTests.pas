@@ -26,7 +26,7 @@ procedure TULIDTests.TestCreateULID;
 var
   Ulid: string;
 begin
-  Ulid := CreateULID;
+  Ulid := TULID.NewULID;
   CheckEquals(Length(Ulid), 26);
 end;
 
@@ -34,7 +34,7 @@ procedure TULIDTests.TestEncodeTime;
 var
   Got: string;
 begin
-  Got := ULID.EncodeTime(1469918176385);
+  Got := TULID.EncodeTime(1469918176385);
   CheckEquals('01ARYZ6S41', Got);
 end;
 
@@ -49,7 +49,7 @@ begin
     Ulids := TStringList.Create;
     for I := 0 to 10 do
     begin
-      Ulids.Add(CreateULID);
+      Ulids.Add(TULID.NewULID);
       Sleep(42);
     end;
 
